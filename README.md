@@ -1,103 +1,131 @@
 # Hybrid Personal AI Assistant
 
-Self-hosted personal AI assistant with local Qdrant vector DB and RunPod for GPU-based embeddings and LLM inference.
+A self-hosted personal AI assistant that keeps all your data local while using RunPod's GPU infrastructure for computationally expensive tasks (embeddings and LLM inference).
 
-## Architecture
+## How It Works
 
-- **Backend**: FastAPI with PostgreSQL and Qdrant
-- **Frontend**: Next.js with React
-- **Vector DB**: Qdrant (local, Dockerized)
-- **Metadata DB**: PostgreSQL
-- **GPU Tasks**: RunPod (embeddings + LLM inference)
+### Architecture Overview
 
-## Setup
-
-### Prerequisites
-
-- Python 3.10+
-- Poetry
-- Node.js 18+
-- Docker and Docker Compose
-- RunPod account with API key
-
-### Backend Setup
-
-1. Install dependencies:
-```bash
-poetry install
+```
+┌─────────────────────────────────────────────────────────┐
+│  Your Local Server (Beelink/Ubuntu Box)                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │  Next.js     │  │  FastAPI     │  │  PostgreSQL  │ │
+│  │  Frontend    │→ │  Backend     │→ │  Metadata DB │ │
+│  │  (Port 3000) │  │  (Port 8000) │  │  (Port 5432) │ │
+│  └──────────────┘  └──────┬───────┘  └──────────────┘ │
+│                            │                            │
+│                            ↓                            │
+│                    ┌──────────────┐                    │
+│                    │   Qdrant     │                    │
+│                    │  Vector DB   │                    │
+│                    │  (Port 6333) │                    │
+│                    └──────────────┘                    │
+└────────────────────────────┬────────────────────────────┘
+                             │
+                             │ API Calls (embeddings, LLM)
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  RunPod GPU Pods (On-Demand)                             │
+│  ┌──────────────┐              ┌──────────────┐        │
+│  │  Embedding   │              │  LLM         │        │
+│  │  Pod         │              │  Inference   │        │
+│  │  (sentence-  │              │  Pod         │        │
+│  │  transformers│              │  (Ollama/    │        │
+│  │  / BGE)      │              │  Mistral)    │        │
+│  └──────────────┘              └──────────────┘        │
+└─────────────────────────────────────────────────────────┘
 ```
 
-2. Copy environment file:
-```bash
-cp .env.example .env
-```
+### Data Flow
 
-3. Edit `.env` with your configuration (RunPod API keys, database URLs, etc.)
+1. **Document Ingestion:**
+   - You upload a document (Markdown, text, JSON)
+   - Backend chunks the text using LangChain
+   - Chunks are sent to RunPod embedding pod
+   - Embeddings are stored in local Qdrant vector DB
+   - Metadata (source, tags, timestamps) stored in PostgreSQL
 
-4. Start PostgreSQL and Qdrant:
-```bash
-docker-compose -f docker/docker-compose.yml up -d
-```
+2. **Chat Query:**
+   - You send a message via the frontend
+   - Backend embeds your query using RunPod
+   - Qdrant searches for similar document chunks (RAG)
+   - Retrieved context + your message → RunPod LLM pod
+   - LLM generates response using your knowledge base
+   - Response + sources returned to frontend
 
-5. Run database migrations (when Alembic is set up):
-```bash
-poetry run alembic upgrade head
-```
+3. **Why RunPod?**
+   - Embeddings and LLM inference need GPUs
+   - You don't want to run GPUs 24/7 on your local server
+   - RunPod provides on-demand GPU pods
+   - You only pay when processing (auto-shutdown when idle)
+   - All your data stays on your server; only text chunks/prompts go to RunPod
 
-6. Start the backend:
-```bash
-poetry run uvicorn backend.main:app --reload
-```
+## Components
 
-### Frontend Setup
+### Backend (FastAPI)
+- **API Routes**: Authentication, document ingestion, chat, search
+- **Services**: 
+  - `runpod_service.py` - Communicates with RunPod API
+  - `qdrant_service.py` - Manages vector database
+  - `embedding_service.py` - Orchestrates embedding pipeline
+  - `llm_service.py` - Handles LLM inference
+  - `prompt_service.py` - Builds prompts with role injection
+- **Database**: PostgreSQL for metadata, Qdrant for vectors
 
-1. Install dependencies:
-```bash
-cd frontend
-npm install
-```
+### Frontend (Next.js)
+- Chat interface with role selection (coach, counselor, planner)
+- Document upload/ingestion
+- Authentication (login/register)
+- Real-time chat with source citations
 
-2. Start development server:
-```bash
-npm run dev
-```
+### RunPod Pods
+- **Embedding Pod**: Runs `embed.py` script with sentence-transformers
+- **LLM Pod**: Runs `inference.py` script with Ollama/Mistral
 
-### RunPod Setup
+## Quick Start
 
-1. Build and push Docker image for RunPod pods:
-```bash
-cd runpod
-docker build -t your-registry/assistant-runpod:latest .
-docker push your-registry/assistant-runpod:latest
-```
-
-2. Create RunPod endpoints:
-   - Embedding endpoint: Use `embed.py` script
-   - LLM endpoint: Use `inference.py` script
-
-3. Update `.env` with your RunPod endpoint IDs.
-
-## Usage
-
-1. Register a user via `/api/auth/register`
-2. Login via `/api/auth/login` to get access token
-3. Ingest documents via `/api/ingest/`
-4. Chat via `/api/chat/` or use the frontend UI
-
-## API Endpoints
-
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get token
-- `POST /api/ingest/` - Ingest document
-- `POST /api/chat/` - Chat with RAG
-- `POST /api/search/` - Search documents
+See [SETUP.md](SETUP.md) for detailed setup instructions.
 
 ## Project Structure
 
 ```
-backend/          # FastAPI backend
-frontend/         # Next.js frontend
-runpod/           # RunPod job scripts
-docker/           # Docker Compose configs
+assistant/
+├── backend/              # FastAPI backend
+│   ├── api/routes/       # API endpoints
+│   ├── services/         # Business logic
+│   ├── models/           # Database models
+│   └── main.py          # Application entrypoint
+├── frontend/            # Next.js frontend
+│   ├── app/             # Next.js app directory
+│   ├── components/      # React components
+│   └── lib/             # Utilities
+├── runpod/              # RunPod job scripts
+│   ├── embed.py         # Embedding job
+│   ├── inference.py     # LLM inference job
+│   └── Dockerfile       # Container image
+└── docker/              # Docker Compose configs
 ```
 
+## API Endpoints
+
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login and get JWT token
+- `POST /api/ingest/` - Ingest document (text/JSON)
+- `POST /api/upload/` - Upload file (Markdown, text)
+- `POST /api/chat/` - Chat with RAG
+- `POST /api/search/` - Search documents
+- `GET /api/documents/` - List documents
+- `GET /health` - Health check
+
+## Security
+
+- All data stored locally (PostgreSQL, Qdrant)
+- JWT authentication for API access
+- RunPod only receives sanitized text chunks (no personal data)
+- No cloud SaaS dependencies (Pinecone, OpenAI, etc.)
+- Secrets in environment variables (never in code)
+
+## License
+
+MIT
