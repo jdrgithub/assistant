@@ -1,0 +1,42 @@
+repo-root/
+├── backend/
+│   ├── main.py                 # FastAPI entrypoint
+│   ├── api/
+│   │   ├── ingest.py           # Endpoint to ingest + send to RunPod
+│   │   ├── query.py            # Endpoint to query Qdrant + return matches
+│   │   └── chat.py             # Assistant chat routing + RAG
+│   ├── services/
+│   │   ├── qdrant_client.py    # Local vector DB logic
+│   │   ├── runpod_client.py    # REST/SSH wrapper to call RunPod jobs
+│   │   └── prompt_builder.py   # Assistant role injection logic
+│   ├── models/
+│   │   └── schemas.py          # Pydantic models for documents, queries
+│   └── db/
+│       └── metadata.db         # SQLite or Postgres for chat/task logs
+│
+├── frontend/
+│   ├── pages/
+│   │   ├── index.tsx           # Main chat + assistant UI
+│   │   ├── wiki.tsx            # Markdown wiki viewer
+│   │   └── settings.tsx        # Role settings, LLM toggle
+│   ├── components/
+│   │   ├── ChatBox.tsx         # Chat display + input
+│   │   ├── TreeView.tsx        # Nested doc navigation
+│   │   └── MarkdownEditor.tsx  # Inline editing (Tiptap or MDX)
+│   └── lib/
+│       └── api.ts              # API client for backend routes
+│
+├── runpod/
+│   ├── embed.py               # Takes in JSON, returns vector output
+│   ├── Dockerfile             # Used for RunPod pod image
+│   └── bootstrap.sh           # Download models, set up environment
+│
+├── vectorstore/
+│   ├── ingest_pipeline.py     # Loads docs, splits, sends to RunPod
+│   ├── query_pipeline.py      # Embeds query, retrieves from Qdrant
+│   └── utils.py               # Deduplication, cleaning, etc.
+│
+├── .cursorrules              # Tells Cursor to avoid SaaS, prefer local
+├── .env                      # API keys, local config
+├── README.md
+└── requirements.txt          # Backend Python deps (FastAPI, Qdrant, etc)

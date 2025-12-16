@@ -1,0 +1,21 @@
+# Features for Later Implementation
+
+## Wiki-Style Knowledge Base Interface
+
+**Purpose**: View and navigate the ingested knowledge base beyond chat interface.
+
+**Features to decide:**
+- Basic: List documents, view content, search
+- Advanced: Tree navigation, tags, metadata, edit links
+- Full: All above + document relationships, embedding status, re-index options
+
+**Editing capability:**
+- View-only (read documents from knowledge base)
+- Allow editing (update documents and re-ingest)
+
+**Integration points:**
+- Frontend: `frontend/app/wiki/page.tsx` (already in scaffold)
+- Backend: New endpoint `/api/documents` to list/retrieve documents
+- Display: Markdown renderer, document tree navigation
+- Search: Filter by tags, date, source type
+

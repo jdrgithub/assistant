@@ -1,0 +1,57 @@
+[defaults]
+style = "pythonic"
+prefer-comments = true
+small-functions = true
+variable-names = "meaningful"
+architecture = "modular"
+framework = "FastAPI + React"
+safety = "high"
+privacy = "local by default"
+chunked-commits = true
+commit-frequency = "small logical units"
+prefer-rollback-safety = true
+
+[env]
+use = "poetry"
+virtualenv = ".venv"
+
+[assistant]
+initiative = "allowed"
+prompt-user-before-critical-changes = true
+document-every-step = true
+
+[avoid]
+- SaaS dependencies (Pinecone, Firebase, Supabase)
+- Managed vector DBs
+- Secrets in code
+- Hardcoded model calls to OpenAI/Claude
+
+[prefer]
+- Local vector DBs (Qdrant)
+- Local storage (Markdown, JSON)
+- External model calls via RunPod or self-hosted relay
+- Environment variables for config
+- Stateless jobs for embeddings/inference
+- LangChain or native RAG pipelines
+- API modularity (e.g. /ingest, /chat, /search)
+- Write Python code that is minimal, readable, and self-documenting via clear naming.
+- Keep designs simple and purposeful
+- Avoid unnecessary abstraction and nesting.
+- Log each step in BUILD.log.md (Plan before, Done after).
+- Maintain ROADMAP.<global_feature>.md at a high level (Phase -> Step -> Tasks).
+
+[error_handling]
+- Keep error handling simple and explicit; no over-engineering.
+- Use straightforward control flow; avoid clever constructs.
+
+
+
+[runpod]
+mount-volume = "/workspace"
+entrypoint = "python3 /workspace/embed.py"
+models = ["sentence-transformers", "ollama", "mistral"]
+autosync = true
+
+[project]
+name = "Hybrid Personal AI Assistant"
+description = "Self-hosted assistant with local Qdrant and RunPod for embeddings/inference"
