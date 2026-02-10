@@ -61,6 +61,32 @@ A self-hosted personal AI assistant that keeps all your data local while using R
    - You only pay when processing (auto-shutdown when idle)
    - All your data stays on your server; only text chunks/prompts go to RunPod
 
+### Plain English: What Happens When You Use It
+
+**Two simple ways to capture:**
+- **CLI capture** (recommended): you type a quick thought, note, or document in the CLI.
+- **Chatbot capture**: you tell the assistant “capture this…” in chat.
+
+**What the system does next:**
+1. **It saves your raw text** in a capture queue (Postgres). Nothing is lost.
+2. **It tries to classify it** using your local LLM (RunPod).
+   - It uses your current category schemas (people/projects/ideas/admin or your custom ones).
+   - It returns a suggested category, structured fields, and a confidence score.
+3. **It logs every step** in the audit trail (so you can see what it decided).
+4. **If confidence is low**, it puts the item in a review queue.
+5. **You review and approve** from the CLI or chatbot.
+6. **Once approved**, it:
+   - Stores a structured entry in Postgres
+   - Chunks the text and stores embeddings in Qdrant
+
+**When you chat normally:**
+1. Your question is embedded via RunPod.
+2. Qdrant finds relevant chunks.
+3. The assistant uses those chunks to answer.
+4. The conversation is saved in Postgres.
+
+**Bottom line:** you only capture and approve; the system handles the rest.
+
 ## Components
 
 ### Backend (FastAPI)
