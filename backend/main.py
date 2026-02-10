@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
-from backend.api.routes import auth, ingest, chat, search, documents, upload, health
+from backend.api.routes import auth, ingest, chat, search, documents, upload, health, schema, capture, review
 
 # Configure logging
 logging.basicConfig(
@@ -33,6 +33,9 @@ app.include_router(health.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(ingest.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
+app.include_router(schema.router, prefix="/api")
+app.include_router(capture.router, prefix="/api")
+app.include_router(review.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")

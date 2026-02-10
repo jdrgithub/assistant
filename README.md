@@ -87,6 +87,22 @@ A self-hosted personal AI assistant that keeps all your data local while using R
 
 See [SETUP.md](SETUP.md) for detailed setup instructions.
 
+## CLI Capture (Recommended)
+
+The CLI is the primary capture flow and replaces curl-based interactions.
+
+```bash
+export ASSISTANT_API_URL=http://localhost:8000
+export ASSISTANT_TOKEN=your-jwt-token
+.venv/bin/python backend/cli/assistant_cli.py
+```
+
+Use it to:
+- Quick capture raw thoughts
+- Capture via chatbot classification
+- Review and approve/reject items
+- Normal chat queries
+
 ## Project Structure
 
 ```

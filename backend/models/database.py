@@ -62,3 +62,63 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_indexed = Column(Boolean, default=True)
 
+
+class CategorySchema(Base):
+    """Dynamic category schema for classification."""
+    __tablename__ = "category_schemas"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    fields = Column(JSON, nullable=False, comment="Schema fields definition")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CaptureItem(Base):
+    """Captured raw input waiting for classification or review."""
+    __tablename__ = "capture_items"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    source = Column(String, nullable=True, comment="CLI, chatbot, upload, etc.")
+    status = Column(String, default="pending", comment="pending, needs_review, approved, rejected")
+    suggested_category = Column(String, nullable=True)
+    suggested_fields = Column(JSON, nullable=True, comment="Proposed structured data")
+    confidence = Column(Integer, nullable=True, comment="0-100 confidence score")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+
+
+class StructuredEntry(Base):
+    """Structured, classified entry derived from captured content."""
+    __tablename__ = "structured_entries"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    category_id = Column(Integer, ForeignKey("category_schemas.id"), nullable=False)
+    title = Column(String, nullable=True)
+    data = Column(JSON, nullable=False, comment="Structured data per schema")
+    source = Column(String, nullable=True)
+    capture_id = Column(Integer, ForeignKey("capture_items.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    category = relationship("CategorySchema")
+
+
+class IngestionLog(Base):
+    """Audit trail for ingestion and classification actions."""
+    __tablename__ = "ingestion_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    capture_id = Column(Integer, ForeignKey("capture_items.id"), nullable=True)
+    action = Column(String, nullable=False, comment="capture, classify, approve, reject")
+    details = Column(JSON, nullable=True)
+    model = Column(String, nullable=True)
+    confidence = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

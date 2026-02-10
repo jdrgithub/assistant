@@ -102,6 +102,16 @@ Or use Alembic migrations:
 .venv/bin/alembic -c backend/alembic.ini upgrade head
 ```
 
+### Step 6: CLI Capture (Recommended)
+
+Set environment variables and run the CLI:
+
+```bash
+export ASSISTANT_API_URL=http://localhost:8000
+export ASSISTANT_TOKEN=your-jwt-token
+.venv/bin/python backend/cli/assistant_cli.py
+```
+
 ## Part 2: RunPod Setup
 
 RunPod provides GPU pods on-demand. We'll create two endpoints:

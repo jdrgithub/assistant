@@ -5,11 +5,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.api.dependencies import get_current_user_dep, get_db_dep
-from backend.models.database import User, Conversation, Message
+from backend.models.database import (
+    User, Conversation, Message, CaptureItem, CategorySchema, IngestionLog
+)
 from backend.models.schemas import ChatRequest, ChatResponse, DocumentResponse
 from backend.services.runpod_service import runpod_service
 from backend.services.qdrant_service import qdrant_service
 from backend.services.llm_service import llm_service
+from backend.services.classification_service import classification_service
+from backend.services.schema_service import ensure_default_schemas
 from backend.config import settings
 from datetime import datetime
 
@@ -26,6 +30,68 @@ async def chat(
     Chat endpoint with optional RAG: retrieve context, generate response.
     """
     try:
+        # Capture-only mode for direct ingestion
+        if chat_request.mode == "capture":
+            capture_item = CaptureItem(
+                user_id=current_user.id,
+                content=chat_request.message,
+                source="chatbot"
+            )
+            db.add(capture_item)
+            await db.flush()
+            
+            db.add(IngestionLog(
+                capture_id=capture_item.id,
+                action="capture",
+                details={"source": "chatbot"},
+                model=None,
+                confidence=None
+            ))
+            
+            await ensure_default_schemas(db)
+            schemas = await db.execute(
+                select(CategorySchema).where(CategorySchema.is_active == True)
+            )
+            schema_list = schemas.scalars().all()
+            
+            classification = None
+            if schema_list:
+                classification = await classification_service.classify_text(
+                    text=chat_request.message,
+                    schemas=schema_list
+                )
+                capture_item.suggested_category = classification.get("category")
+                capture_item.suggested_fields = classification.get("fields")
+                capture_item.confidence = classification.get("confidence")
+                capture_item.status = "needs_review" if (capture_item.confidence or 0) < 70 else "pending"
+                
+                db.add(IngestionLog(
+                    capture_id=capture_item.id,
+                    action="classify",
+                    details=classification,
+                    model="runpod_llm",
+                    confidence=capture_item.confidence
+                ))
+            
+            await db.commit()
+            await db.refresh(capture_item)
+            
+            response_text = "Captured for review."
+            if classification and classification.get("category"):
+                response_text = (
+                    f"Captured. Suggested category: {classification.get('category')} "
+                    f"(confidence {classification.get('confidence')}%)."
+                )
+            
+            return ChatResponse(
+                message=response_text,
+                conversation_id=chat_request.conversation_id or 0,
+                capture_id=capture_item.id,
+                classification=classification,
+                follow_up_questions=classification.get("follow_up_questions") if classification else None,
+                confidence=classification.get("confidence") if classification else None
+            )
+        
         # Get or create conversation
         conversation = None
         if chat_request.conversation_id:
